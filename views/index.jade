@@ -1,5 +1,15 @@
 extends layout
 
 block content
-  h1= title
-  p Welcome to #{title}
+
+    h1= title
+    p Welcome to #{title}
+
+    form(name="scrapeUrl", action="/scrape", method="post")
+
+        p Please enter URL to scrape
+
+        input(type="text", name="urlToScrape")
+
+        input(type="submit", value="Scrape url")
+
