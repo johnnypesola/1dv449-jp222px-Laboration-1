@@ -7,6 +7,9 @@ var request = require('request');
 var cheerio = require('cheerio');
 var router = express.Router();
 
+// Require model dependencies
+var Person = require('../model/person.js');
+
 // Variables
 var calendarString = "Kalendrar";
 var cinemaString = "Stadens biograf!";
@@ -14,21 +17,6 @@ var dinnerString = "Zekes restaurang!!";
 var personsArray = [];
 
 var baseUrl;
-
-
-
-function Person(name){
-
-    this.name = name || "Some person";
-
-    this.freeOnfriday = false;
-    this.freeOnSaturday = false;
-    this.freeOnSunday = false;
-}
-
-
-// Require dependencies
-require('../model/person.js');
 
 
 
