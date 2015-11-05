@@ -7,33 +7,71 @@ var request = require('request');
 var cheerio = require('cheerio');
 var router = express.Router();
 
+// Variables
+var calendarString = "Kalendrar";
+var cinemaString = "Stadens biograf!";
+var dinnerString = "Zekes restaurang!!";
+var personsArray = [];
 
-// Setup exception object.
+var baseUrl;
+
+
+
+function Person(name){
+
+    this.name = name || "Some person";
+
+    this.freeOnfriday = false;
+    this.freeOnSaturday = false;
+    this.freeOnSunday = false;
+}
+
+
+// Require dependencies
+require('../model/person.js');
+
 
 
 // Handle url to scrape. Sent with POST form
 router.post('/', function(req, res, next){
 
-    var url, link;
+    var currentLink;
 
     // GET url from post
-    url = req.body.urlToScrape;
+    baseUrl = req.body.urlToScrape;
 
     // Scrape the base url
-    scrapeLinks(url, function(linksArray){
+    scrapeLinks(baseUrl, function(linksArray){
 
         // No links found
-        if(!(linksArray instanceof Array))
-        {
+        if(!(linksArray instanceof Array)) {
             res.render('scrape_error', { message: "ERROR: Could not find any links in the scraped page. Please try again." });
             return;
         }
 
         // Loop through links
-        for(link in linksArray){
-            scrapeLinks(link.href)
-        }
+        for(var key in linksArray){
 
+            currentLink =  linksArray[key];
+
+            // Try to find calendar
+            if(currentLink.title === calendarString){
+
+                scrapeCalendar(currentLink.href);
+            }
+
+            // Try to find cinema
+            if(currentLink.title === cinemaString){
+
+                //scrapeCinema(linksArray[key].href);
+            }
+
+            // Try to find dinner
+            if(currentLink.title === dinnerString){
+
+                //scrapeDinner(linksArray[key].href);
+            }
+        }
     });
 
     //res.render('movies_scraped', { title: 'Scraping...' + url });
@@ -41,10 +79,35 @@ router.post('/', function(req, res, next){
 
 function scrapeCalendar(url, callback){
 
-    scrapeLinks()
+    var currentLink;
+    url = fixUrl(baseUrl + url);
+
+    scrapeLinks(url , function(linksArray) {
+
+        // No links found
+        if(!(linksArray instanceof Array)) {
+            res.render('scrape_error', { message: "ERROR: Could not find any links in the scraped calendar page. Please try again." });
+            return;
+        }
+
+
+        // Loop through links
+        for(var key in linksArray){
+
+            currentLink =  linksArray[key];
+
+            scrapePerson(url + "/" + currentLink.href);
+        }
+    });
 }
 
-function scrapeLinks(url, callback){
+function fixUrl(urlString){
+    return urlString.replace(/([^:]\/)\/+/g, "$1");
+}
+
+function scrapePerson(url, callback){
+
+    url = (fixUrl(url));
 
     // Fetch the url
     request(url, function(error, response, html){
@@ -52,16 +115,60 @@ function scrapeLinks(url, callback){
         // Check that there were no errors
         if(!error){
 
+            var $, linksArray, name, person, fridayElemIndex, saturdayElemIndex, sundayElemIndex, tdElements;
+
             // Get jquery functionality with cheerio
-            var $ = cheerio.load(html);
+            $ = cheerio.load(html);
 
             // Define an array that should contain parsed links
-            var linksArray = [];
+            linksArray = [];
+
+            // Get name
+            name = $('h2').text();
+
+            // Create person
+            person = new Person(name);
+
+            // Get free days
+            fridayElemIndex =  $("th:contains('Friday')").index();
+            saturdayElemIndex =  $("th:contains('Saturday')").index();
+            sundayElemIndex =  $("th:contains('Sunday')").index();
+
+            // Get table cells
+            tdElements = $("td");
+
+            person.freeOnfriday = (tdElements.eq(fridayElemIndex).text().toLowerCase() == "ok");
+            person.freeOnSaturday = (tdElements.eq(saturdayElemIndex).text().toLowerCase() == "ok");
+            person.freeOnSunday = (tdElements.eq(sundayElemIndex).text().toLowerCase() == "ok");
+
+            // Store person
+            personsArray.push(person);
+
+            //callback(linksArray);
+        }
+    })
+}
+
+function scrapeLinks(url, callback){
+
+    console.log(url);
+
+    // Fetch the url
+    request(url, function(error, response, html){
+
+        var $, linksArray;
+
+        // Check that there were no errors
+        if(!error){
+
+            // Get jquery functionality with cheerio
+            $ = cheerio.load(html);
+
+            // Define an array that should contain parsed links
+            linksArray = [];
 
             // Loop trough links in page
             $('a').each(function(index) {
-
-                console.log($(this).text());
 
                 // Create object of link and store in array
                 linksArray.push(
@@ -75,7 +182,6 @@ function scrapeLinks(url, callback){
             callback(linksArray);
         }
     })
-
 }
 
 
