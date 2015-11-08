@@ -13,7 +13,8 @@ var router = express.Router();
 var Person = require('../model/person.js');
 var Day = require('../model/day.js');
 var Movie = require('../model/movie.js');
-var MoviePlayTime = require('../model/movieplaytime.js');
+var TimeSpan = require('../model/timespan.js');
+var Calendar = require('../model/calendar.js');
 
 // Variables
 var calendarString = "Kalendrar";
@@ -45,16 +46,20 @@ router.post('/', function(req, res, next){
         }
 
         // Scrape array of links found on startpage
-        scrapeArrayOfSpecificLinks(linksArray);
+        scrapeArrayOfStartPageLinks(linksArray);
     });
 });
 
-function scrapeArrayOfSpecificLinks(linksArray, callback){
+function scrapeArrayOfStartPageLinks(linksArray, callback){
 
     var functionToRun;
+    callback = callback || function(){};
 
     if(linksArray instanceof Array && linksArray.length > 0){
 
+        // Scrape one link one at a time to prevent exceeding 5 simultaneous GET requests.
+
+        // Pick the first link and remove it from array
         var currentLink = linksArray.shift();
 
         if(currentLink.title === calendarString) {
@@ -75,14 +80,68 @@ function scrapeArrayOfSpecificLinks(linksArray, callback){
         functionToRun(currentLink.href, function(){
 
             // When function is complete, run next function by running this function again.
-            scrapeArrayOfSpecificLinks(linksArray);
+            scrapeArrayOfStartPageLinks(linksArray);
         });
+    }
+    else {
+        callback();
     }
 }
 
-function scrapeDinner(href, callback){
-    callback();
-    console.log("scrapeDinner");
+function scrapeDinner(url, callback){
+
+    url = (fixUrl(baseUrl + "/" + url));
+
+    // Fetch the url
+    request(url, function(error, response, html) {
+
+        var $;
+        var availableDaysRawDataArray = [];
+
+        // Get jquery functionality with cheerio
+        $ = cheerio.load(html);
+
+        $('div p input[type=radio]').each(function(index){
+            var value = $(this).val();
+
+            availableDaysRawDataArray.push(value);
+        });
+
+        parseDinnerDaysRawData(availableDaysRawDataArray);
+    })
+}
+
+function parseDinnerDaysRawData(rawDataArray){
+
+    var rawDayName, startHour, endHour;
+
+    var calendar = new Calendar();
+
+    rawDataArray.forEach(function(data){
+
+        rawDayName = data.substr(0,3);
+        startHour = data.substr(3,2) + ":00";
+        endHour = data.substr(5,2) + ":00";
+
+        // Parse day names
+        if(rawDayName == "fre") {
+            calendar.friday.dinnerAvailableTimesArray.push(
+                new TimeSpan(startHour, endHour)
+            );
+        }
+        else if(rawDayName == "lor") {
+            calendar.saturday.dinnerAvailableTimesArray.push(
+                new TimeSpan(startHour, endHour)
+            );
+        }
+        else if(rawDayName == "son") {
+            calendar.sunday.dinnerAvailableTimesArray.push(
+                new TimeSpan(startHour, endHour)
+            );
+        }
+    });
+
+    console.log(calendar.sunday);
 }
 
 function scrapeCalendar(url, callback){
@@ -130,7 +189,7 @@ function scrapePerson(url, callback){
         // Check that there were no errors
         if(!error){
 
-            var $, linksArray, name, person, fridayElemIndex, saturdayElemIndex, sundayElemIndex, tdElements;
+            var $, name, person, fridayElemIndex, saturdayElemIndex, sundayElemIndex, tdElements;
 
             // Get jquery functionality with cheerio
             $ = cheerio.load(html);
@@ -173,11 +232,7 @@ function scrapeCinema(url, callback){
         // Check that there were no errors
         if(!error){
 
-            var $, fridayOptValue, saturdayOptValue, sundayOptValue, ajaxArgs;
-            var dayObjArray = [];
-
-            var daysToCheckValues = [];
-
+            var $;
 
             // Get jquery functionality with cheerio
             $ = cheerio.load(html);
@@ -207,8 +262,6 @@ function scrapeCinema(url, callback){
 
             // Get movies for days status (if movies are free or fully booked for specific days).
             getMovieDaysStatus(fixUrl(url + "/check"), callback);
-
-
         }
     })
 }
@@ -234,11 +287,11 @@ function getMovieDaysStatus(url, callBack){
             // Get day status
             request.get({url:url, qs:queryString, json: true}, function (error, response, jsonData) {
 
-                // Add new MoviePlayTime object to day object.
+                // Add new TimeSpan object to day object.
                 jsonData.forEach(function(dataObj){
 
                     day.moviePlayTimesArray.push(
-                        new MoviePlayTime(dataObj.time,dataObj.status)
+                        new TimeSpan(dataObj.time, null, dataObj.status)
                     );
                 });
 
