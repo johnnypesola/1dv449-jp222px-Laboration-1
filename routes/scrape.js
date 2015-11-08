@@ -18,7 +18,7 @@ var MoviePlayTime = require('../model/movieplaytime.js');
 // Variables
 var calendarString = "Kalendrar";
 var cinemaString = "Stadens biograf!";
-var dinnerString = "Zekes restaurang!!";
+var dinnerString = "Zekes restaurang!";
 
 var personObjArray = [];
 var numberOfPersons = 0;
@@ -32,8 +32,6 @@ var baseUrl;
 // Handle url to scrape. Sent with POST form
 router.post('/', function(req, res, next){
 
-    var currentLink;
-
     // GET url from post
     baseUrl = req.body.urlToScrape;
 
@@ -46,40 +44,46 @@ router.post('/', function(req, res, next){
             return;
         }
 
-        // Loop through links
-        for(var key in linksArray){
-
-            currentLink =  linksArray[key];
-
-
-
-            // Try to find calendar
-            if(currentLink.title === calendarString){
-
-                scrapeCalendar(currentLink.href, function(){
-                    console.log(personObjArray.length + "<- personObjArray.length");
-                });
-            }
-
-            // Try to find cinema
-            if(currentLink.title === cinemaString){
-
-                scrapeCinema(currentLink.href, function(){
-                    console.log(movieObjArray.length + "<- movieObjArray.length");
-                });
-            }
-
-            // Try to find dinner
-            if(currentLink.title === dinnerString){
-
-                //scrapeDinner(currentLink.href);
-            }
-        }
+        // Scrape array of links found on startpage
+        scrapeArrayOfSpecificLinks(linksArray);
     });
-
-    //res.render('movies_scraped', { title: 'Scraping...' + url });
 });
 
+function scrapeArrayOfSpecificLinks(linksArray, callback){
+
+    var functionToRun;
+
+    if(linksArray instanceof Array && linksArray.length > 0){
+
+        var currentLink = linksArray.shift();
+
+        if(currentLink.title === calendarString) {
+            functionToRun = scrapeCalendar;
+        }
+        else if(currentLink.title === cinemaString) {
+            functionToRun = scrapeCinema;
+        }
+        else if(currentLink.title === dinnerString) {
+            functionToRun = scrapeDinner;
+        }
+        else {
+            res.render('scrape_error', { message: "ERROR: Not all necessary links could be found in the scraped page. Please try again." });
+            return;
+        }
+
+        // Run function
+        functionToRun(currentLink.href, function(){
+
+            // When function is complete, run next function by running this function again.
+            scrapeArrayOfSpecificLinks(linksArray);
+        });
+    }
+}
+
+function scrapeDinner(href, callback){
+    callback();
+    console.log("scrapeDinner");
+}
 
 function scrapeCalendar(url, callback){
 
@@ -114,7 +118,6 @@ function scrapeCalendar(url, callback){
         }
     });
 }
-
 
 function scrapePerson(url, callback){
 
@@ -253,18 +256,6 @@ function getMovieDaysStatus(url, callBack){
                 }
             })
         });
-    });
-}
-
-function areMoviesScraped() {
-    //var isScraped = true;
-
-    movieObjArray.forEach(function(movie){
-        if(typeof(movie.daysArray) === 'undefined'){
-            return false;
-        }
-
-        //movie.daysArray.
     });
 }
 
