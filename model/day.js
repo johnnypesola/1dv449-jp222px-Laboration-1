@@ -1,6 +1,4 @@
 
-
-
 var Day = function (name, value){
 
     this.timeSpansArray = [];

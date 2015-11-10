@@ -118,7 +118,7 @@ function findValidMoviesAndDinnerTimes(){
                             // Check if dinner time span is after movie timespan
                             if(dinnerDayTimeSpan.IsAfterTimeSpan(movieDayTimeSpan)){
 
-                                DaysArray.push({
+                                workingDaysArray.push({
                                     day: dinnerDay.name,
                                     movie: movie.name,
                                     movieTimeSpan: movieDayTimeSpan,
@@ -140,11 +140,22 @@ function findValidMoviesAndDinnerTimes(){
         console.log("dinner: " +  workingDay.dinnerTimeSpan.militaryStartTime + "-" + workingDay.dinnerTimeSpan.militaryEndTime);
     });
 
-    console.log(personObjArray);
-
+    doesDayWorkForPersons(workingDaysArray);
 }
 
-function 
+function doesDayWorkForPersons(workingDaysArray){
+
+    console.log(getDaysThatWorkForPersons());
+}
+
+function getDaysThatWorkForPersons(){
+
+    // Pick the first person and remove from array
+    var firstPerson = personObjArray.shift();
+
+    // Get free days for all persons.
+    return firstPerson.GetMutualFreeDays(personObjArray);
+}
 
 function scrapeDinner(url, callback){
 
@@ -250,15 +261,15 @@ function scrapePerson(url, callback){
             // Create person
             person = new Person(name);
 
-            // Get free days
+            // Get free days indexes
             fridayElemIndex =  $("th:contains('Friday')").index();
             saturdayElemIndex =  $("th:contains('Saturday')").index();
             sundayElemIndex =  $("th:contains('Sunday')").index();
 
-            // Get table cells
+            // Get table cells with th indexes
             tdElements = $("td");
 
-            person.freeOnfriday = (tdElements.eq(fridayElemIndex).text().toLowerCase() == "ok");
+            person.freeOnFriday = (tdElements.eq(fridayElemIndex).text().toLowerCase() == "ok");
             person.freeOnSaturday = (tdElements.eq(saturdayElemIndex).text().toLowerCase() == "ok");
             person.freeOnSunday = (tdElements.eq(sundayElemIndex).text().toLowerCase() == "ok");
 
