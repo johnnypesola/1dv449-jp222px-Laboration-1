@@ -29,6 +29,40 @@ var TimeSpan = function (startTime, endTime, fullyBooked){
 
     this.fullyBooked = (fullyBooked === 1 || fullyBooked === true) || false;
 
+    var that = this;
+
+    // Public methods
+    this.DoesNotConflictWithTimeSpan = function(otherTimeSpanObj){
+        return !(that.DoesConflictWithTimeSpan(otherTimeSpanObj));
+    };
+
+    this.DoesConflictWithTimeSpan = function(otherTimeSpanObj){
+
+        //console.log("this start: " + that.militaryStartTime + " this end: " +  that.militaryEndTime);
+        //console.log("other start: " + otherTimeSpanObj.militaryStartTime + " other end: " +  otherTimeSpanObj.militaryEndTime);
+
+        // Conflict check if statement
+        if (
+            that.militaryStartTime < otherTimeSpanObj.militaryStartTime &&
+            that.militaryEndTime > otherTimeSpanObj.militaryStartTime ||
+
+            that.militaryStartTime > otherTimeSpanObj.militaryStartTime &&
+            that.militaryStartTime < otherTimeSpanObj.militaryEndTime ||
+
+            that.militaryStartTime > otherTimeSpanObj.militaryStartTime &&
+            that.militaryEndTime < otherTimeSpanObj.militaryEndTime
+        ){
+            //console.log("does conflict");
+            return true;
+        }
+        else {
+            return false;
+        }
+    };
+
+    this.IsAfterTimeSpan = function(otherTimeSpanObj){
+        return that.militaryStartTime >= otherTimeSpanObj.militaryEndTime;
+    }
 };
 
 module.exports = TimeSpan;

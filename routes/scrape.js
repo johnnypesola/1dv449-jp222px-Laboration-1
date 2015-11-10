@@ -14,7 +14,7 @@ var Person = require('../model/person.js');
 var Day = require('../model/day.js');
 var Movie = require('../model/movie.js');
 var TimeSpan = require('../model/timespan.js');
-var Calendar = require('../model/calendar.js');
+var Dinner = require('../model/dinner.js');
 
 // Variables
 var calendarString = "Kalendrar";
@@ -25,6 +25,8 @@ var personObjArray = [];
 var numberOfPersons = 0;
 
 var movieObjArray = [];
+
+var dinnerObj;
 
 var baseUrl;
 
@@ -46,7 +48,8 @@ router.post('/', function(req, res, next){
         }
 
         // Scrape array of links found on startpage
-        scrapeArrayOfStartPageLinks(linksArray);
+        scrapeArrayOfStartPageLinks(linksArray, findValidMoviesAndDinnerTimes);
+
     });
 });
 
@@ -80,16 +83,72 @@ function scrapeArrayOfStartPageLinks(linksArray, callback){
         functionToRun(currentLink.href, function(){
 
             // When function is complete, run next function by running this function again.
-            scrapeArrayOfStartPageLinks(linksArray);
+            scrapeArrayOfStartPageLinks(linksArray, callback);
         });
     }
     else {
+
         callback();
     }
 }
 
+function findValidMoviesAndDinnerTimes(){
+
+    var workingDaysArray = [];
+
+    // Loop for each movie
+    movieObjArray.forEach(function(movie){
+
+        // Loop for each movie play day
+        movie.daysArray.forEach(function(movieDay){
+
+            // Loop for each dinner day
+            dinnerObj.daysArray.forEach(function(dinnerDay){
+
+                // Check that the days match.
+                if(movieDay.name == dinnerDay.name){
+
+                    // Loop each dinner day time span
+                    dinnerDay.timeSpansArray.forEach(function(dinnerDayTimeSpan){
+
+
+                        // Loop each movie day time span
+                        movieDay.timeSpansArray.forEach(function(movieDayTimeSpan){
+
+                            // Check if dinner time span is after movie timespan
+                            if(dinnerDayTimeSpan.IsAfterTimeSpan(movieDayTimeSpan)){
+
+                                DaysArray.push({
+                                    day: dinnerDay.name,
+                                    movie: movie.name,
+                                    movieTimeSpan: movieDayTimeSpan,
+                                    dinnerTimeSpan: dinnerDayTimeSpan
+                                })
+                            }
+                        });
+                    });
+                }
+            });
+        })
+    });
+
+    workingDaysArray.forEach(function(workingDay){
+        console.log("---------------------------------");
+        console.log(workingDay.movie);
+        console.log(workingDay.day);
+        console.log("movie: " +  workingDay.movieTimeSpan.militaryStartTime + "-" + workingDay.movieTimeSpan.militaryEndTime);
+        console.log("dinner: " +  workingDay.dinnerTimeSpan.militaryStartTime + "-" + workingDay.dinnerTimeSpan.militaryEndTime);
+    });
+
+    console.log(personObjArray);
+
+}
+
+function 
+
 function scrapeDinner(url, callback){
 
+    callback = callback || function(){};
     url = (fixUrl(baseUrl + "/" + url));
 
     // Fetch the url
@@ -108,14 +167,17 @@ function scrapeDinner(url, callback){
         });
 
         parseDinnerDaysRawData(availableDaysRawDataArray);
+
+        // Execute callback
+        callback();
     })
 }
 
 function parseDinnerDaysRawData(rawDataArray){
 
-    var rawDayName, startHour, endHour;
+    var rawDayName, startHour, endHour, dayName;
 
-    var calendar = new Calendar();
+    dinnerObj = new Dinner();
 
     rawDataArray.forEach(function(data){
 
@@ -124,24 +186,12 @@ function parseDinnerDaysRawData(rawDataArray){
         endHour = data.substr(5,2) + ":00";
 
         // Parse day names
-        if(rawDayName == "fre") {
-            calendar.friday.dinnerAvailableTimesArray.push(
-                new TimeSpan(startHour, endHour)
-            );
-        }
-        else if(rawDayName == "lor") {
-            calendar.saturday.dinnerAvailableTimesArray.push(
-                new TimeSpan(startHour, endHour)
-            );
-        }
-        else if(rawDayName == "son") {
-            calendar.sunday.dinnerAvailableTimesArray.push(
-                new TimeSpan(startHour, endHour)
-            );
-        }
-    });
+        dayName = (rawDayName === "fre" ? "Fredag" : (rawDayName === "lor" ? "Lördag" : (rawDayName === "son" ? "Söndag" : "")));
 
-    console.log(calendar.sunday);
+        // Add time span to day
+        dinnerObj.AddTimeToDay(dayName, new TimeSpan(startHour, endHour));
+
+    });
 }
 
 function scrapeCalendar(url, callback){
@@ -290,7 +340,7 @@ function getMovieDaysStatus(url, callBack){
                 // Add new TimeSpan object to day object.
                 jsonData.forEach(function(dataObj){
 
-                    day.moviePlayTimesArray.push(
+                    day.timeSpansArray.push(
                         new TimeSpan(dataObj.time, null, dataObj.status)
                     );
                 });
