@@ -1,6 +1,12 @@
 
 var Day = function (name, value){
 
+    var swedishDayNames = {
+        Friday: "Fredag",
+        Saturday: "Lördag",
+        Sunday: "Söndag"
+    };
+
     this.timeSpansArray = [];
     this.name = name || "Some day";
     this.value = value || "";
@@ -21,9 +27,9 @@ var Day = function (name, value){
         return nonConflictingTimeSpansArray;
     };
 
-    this.GetTimesAfter = function(){
-
-    }
+    this.HasDayName = function(otherDayName){
+        return (otherDayName === that.name || otherDayName === swedishDayNames[that.name]);
+    };
 };
 
 module.exports = Day;

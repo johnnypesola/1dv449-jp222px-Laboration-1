@@ -10,10 +10,6 @@ var TimeSpan = function (startTime, endTime, fullyBooked){
         return Number(timeString.substr(3,2));
     };
 
-    var toString = function(){
-
-    };
-
     // Init values
     this.startTime = startTime || "00:00";
     this.endTime = endTime || ((parseHours(startTime)+2)+":"+this.startTime.substr(3,2)); // TODO: account for passing 23:59
@@ -38,11 +34,8 @@ var TimeSpan = function (startTime, endTime, fullyBooked){
 
     this.DoesConflictWithTimeSpan = function(otherTimeSpanObj){
 
-        //console.log("this start: " + that.militaryStartTime + " this end: " +  that.militaryEndTime);
-        //console.log("other start: " + otherTimeSpanObj.militaryStartTime + " other end: " +  otherTimeSpanObj.militaryEndTime);
-
-        // Conflict check if statement
-        if (
+        // Conflict check
+        return (
             that.militaryStartTime < otherTimeSpanObj.militaryStartTime &&
             that.militaryEndTime > otherTimeSpanObj.militaryStartTime ||
 
@@ -51,13 +44,7 @@ var TimeSpan = function (startTime, endTime, fullyBooked){
 
             that.militaryStartTime > otherTimeSpanObj.militaryStartTime &&
             that.militaryEndTime < otherTimeSpanObj.militaryEndTime
-        ){
-            //console.log("does conflict");
-            return true;
-        }
-        else {
-            return false;
-        }
+        );
     };
 
     this.IsAfterTimeSpan = function(otherTimeSpanObj){

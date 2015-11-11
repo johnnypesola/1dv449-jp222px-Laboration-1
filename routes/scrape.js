@@ -30,13 +30,14 @@ var dinnerObj;
 
 var baseUrl;
 
-
-
 // Handle url to scrape. Sent with POST form
 router.post('/', function(req, res, next){
 
+    var eventsArray = [];
+
     // GET url from post
     baseUrl = req.body.urlToScrape;
+
 
     // Scrape the base url
     scrapeLinks(baseUrl, function(linksArray){
@@ -48,9 +49,17 @@ router.post('/', function(req, res, next){
         }
 
         // Scrape array of links found on startpage
-        scrapeArrayOfStartPageLinks(linksArray, findValidMoviesAndDinnerTimes);
+        scrapeArrayOfStartPageLinks(linksArray, function(){
 
+            eventsArray = getEventsFromScrapedData();
+
+            res.render('events', {events: eventsArray });
+
+        });
     });
+
+    //res.render('events', {events: eventsArray });
+    //res.render('events', {events: {} });
 });
 
 function scrapeArrayOfStartPageLinks(linksArray, callback){
@@ -92,9 +101,11 @@ function scrapeArrayOfStartPageLinks(linksArray, callback){
     }
 }
 
-function findValidMoviesAndDinnerTimes(){
+function getEventsFromScrapedData(){
 
-    var workingDaysArray = [];
+    var prelEventsArray = [],
+        eventsArray = [],
+        daysThatWorkForPersonsArray;
 
     // Loop for each movie
     movieObjArray.forEach(function(movie){
@@ -118,7 +129,7 @@ function findValidMoviesAndDinnerTimes(){
                             // Check if dinner time span is after movie timespan
                             if(dinnerDayTimeSpan.IsAfterTimeSpan(movieDayTimeSpan)){
 
-                                workingDaysArray.push({
+                                prelEventsArray.push({
                                     day: dinnerDay.name,
                                     movie: movie.name,
                                     movieTimeSpan: movieDayTimeSpan,
@@ -132,29 +143,35 @@ function findValidMoviesAndDinnerTimes(){
         })
     });
 
-    workingDaysArray.forEach(function(workingDay){
-        console.log("---------------------------------");
-        console.log(workingDay.movie);
-        console.log(workingDay.day);
-        console.log("movie: " +  workingDay.movieTimeSpan.militaryStartTime + "-" + workingDay.movieTimeSpan.militaryEndTime);
-        console.log("dinner: " +  workingDay.dinnerTimeSpan.militaryStartTime + "-" + workingDay.dinnerTimeSpan.militaryEndTime);
+    daysThatWorkForPersonsArray = getDaysThatWorkForPersons();
+
+    prelEventsArray.forEach(function(eventObj){
+
+        if(doesDayWorkForPersons(eventObj, daysThatWorkForPersonsArray)) {
+
+            eventsArray.push(eventObj);
+        }
     });
 
-    doesDayWorkForPersons(workingDaysArray);
+    return eventsArray;
 }
 
-function doesDayWorkForPersons(workingDaysArray){
+function doesDayWorkForPersons(dayObj, daysThatWorkForPersonsArray){
 
-    console.log(getDaysThatWorkForPersons());
+    return daysThatWorkForPersonsArray.some(function(personDayObj){
+        return personDayObj.HasDayName(dayObj.day);
+    });
 }
 
 function getDaysThatWorkForPersons(){
 
+    var tempPersonObjArray = personObjArray;
+
     // Pick the first person and remove from array
-    var firstPerson = personObjArray.shift();
+    var firstPerson = tempPersonObjArray.shift();
 
     // Get free days for all persons.
-    return firstPerson.GetMutualFreeDays(personObjArray);
+    return firstPerson.GetMutualFreeDays(tempPersonObjArray);
 }
 
 function scrapeDinner(url, callback){
@@ -230,9 +247,13 @@ function scrapeCalendar(url, callback){
             // Scrape person
             scrapePerson(url + "/" + currentLink.href, function(){
 
+                console.log("works");
+
                 // If all persons are scraped, execute callback
                 if(isPersonsScrapeDone()) {
                     callback();
+
+                    console.log("does not work");
                 }
             });
         }
@@ -374,6 +395,8 @@ function getMovieDaysStatus(url, callBack){
 }
 
 function isPersonsScrapeDone(){
+
+    console.log(personObjArray.length + " " + numberOfPersons);
     return personObjArray.length === numberOfPersons;
 }
 
@@ -415,6 +438,5 @@ function scrapeLinks(url, callback){
         }
     })
 }
-
 
 module.exports = router;

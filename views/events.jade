@@ -1,0 +1,10 @@
+extends layout
+block content
+    h1 Bokbara evenemang
+    each event in events
+        div.event
+            h2 #{event.day}
+            p Film: #{event.movie}
+            p Filmens speltid: #{event.movieTimeSpan.startTime}-#{event.movieTimeSpan.endTime}
+            p Mat på Zekes Restaurang: #{event.dinnerTimeSpan.startTime}-#{event.dinnerTimeSpan.endTime}
+            button Boka

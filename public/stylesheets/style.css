@@ -1,8 +1,23 @@
 body {
-  padding: 50px;
-  font: 14px "Lucida Grande", Helvetica, Arial, sans-serif;
+    padding: 50px;
+    font: 14px "Lucida Grande", Helvetica, Arial, sans-serif;
+    background: #EEEEEE;
 }
 
 a {
   color: #00B7FF;
 }
+
+
+div.event {
+    background: #FFFFFF;
+    width: 400px;
+    float: left;
+    padding: 20px;
+    margin: 1px;
+    clear: both;
+}
+
+    div.event h2 {
+        margin: 10px 0;
+    }
