@@ -3,7 +3,6 @@
 var express = require('express');
 var request = require('request');
 var cheerio = require('cheerio');
-var q = require('q');
 var querystring =  require('querystring');
 var router = express.Router();
 
@@ -29,6 +28,8 @@ var ScrapeService = function(baseUrl){
     var eventsArray = [];
 
     var dinnerObj;
+
+    var dinnerBookingTargetUrl;
 
     // Public methods
     this.runScraper = function(callback){
@@ -127,7 +128,8 @@ var ScrapeService = function(baseUrl){
                                             dinnerDay.name,
                                             movie.name,
                                             movieDayTimeSpan,
-                                            dinnerDayTimeSpan
+                                            dinnerDayTimeSpan,
+                                            dinnerBookingTargetUrl
                                         )
                                     );
                                 }
@@ -139,8 +141,6 @@ var ScrapeService = function(baseUrl){
         });
 
         daysThatWorkForPersonsArray = getDaysThatWorkForPersons();
-
-        console.log(prelEventsArray[0]);
 
         prelEventsArray.forEach(function(eventObj){
 
@@ -185,11 +185,15 @@ var ScrapeService = function(baseUrl){
             // Get jquery functionality with cheerio
             $ = cheerio.load(html);
 
+            // Get values from radiobuttons
             $('div p input[type=radio]').each(function(index){
                 var value = $(this).val();
 
                 availableDaysRawDataArray.push(value);
             });
+
+            // Get URL for dinner bookings
+            dinnerBookingTargetUrl = (fixUrl(baseUrl + "/" + $('form').attr('action')));
 
             parseDinnerDaysRawData(availableDaysRawDataArray);
 
@@ -248,13 +252,9 @@ var ScrapeService = function(baseUrl){
                 // Scrape person
                 scrapePerson(url + "/" + currentLink.href, function(){
 
-                    console.log("works");
-
                     // If all persons are scraped, execute callback
                     if(isPersonsScrapeDone()) {
                         callback();
-
-                        console.log("does not work");
                     }
                 });
             }
@@ -397,7 +397,6 @@ var ScrapeService = function(baseUrl){
 
     function isPersonsScrapeDone(){
 
-        console.log(personObjArray.length + " " + numberOfPersons);
         return personObjArray.length === numberOfPersons;
     }
 
