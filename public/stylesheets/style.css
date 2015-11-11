@@ -4,6 +4,10 @@ body {
     background: #EEEEEE;
 }
 
+form {
+    font-size: 14px;
+}
+
 a {
   color: #00B7FF;
 }

@@ -1,7 +1,9 @@
 
 var Day = function (name, value){
 
-    var swedishDayNames = {
+    var that = this;
+
+    this.swedishDayNames = {
         Friday: "Fredag",
         Saturday: "Lördag",
         Sunday: "Söndag"
@@ -10,8 +12,6 @@ var Day = function (name, value){
     this.timeSpansArray = [];
     this.name = name || "Some day";
     this.value = value || "";
-    var that = this;
-
 
     // Public methods
     this.GetNonConflictingTimes = function(otherDayObj){
@@ -28,7 +28,7 @@ var Day = function (name, value){
     };
 
     this.HasDayName = function(otherDayName){
-        return (otherDayName === that.name || otherDayName === swedishDayNames[that.name]);
+        return (otherDayName === that.name || otherDayName === that.swedishDayNames[that.name]);
     };
 };
 
