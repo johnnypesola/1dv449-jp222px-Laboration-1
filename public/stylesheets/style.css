@@ -1,19 +1,26 @@
 body {
-    padding: 50px;
-    font: 14px "Lucida Grande", Helvetica, Arial, sans-serif;
-    background: #EEEEEE;
+    padding: 20px;
+    font-family: 'Open Sans', sans-serif;
+    background: url(../images/background.png) repeat-x #000000;
 }
 
 form {
     font-size: 14px;
 }
 
+h1 {
+    color: #FFFFFF;
+}
+
 a {
   color: #00B7FF;
 }
 
+input {
+    font-family: 'Open Sans', sans-serif;
+}
 
-div.event {
+div {
     background: #FFFFFF;
     width: 400px;
     float: left;

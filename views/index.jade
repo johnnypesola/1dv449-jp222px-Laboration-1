@@ -3,13 +3,15 @@ extends layout
 block content
 
     h1= title
-    p Välkommen till #{title}
 
-    form(name="scrapeUrl", action="/scrape", method="post")
+    div
+        p Välkommen till #{title}
 
-        p Var god ange URL till sidan att skrapa.
+        form(name="scrapeUrl", action="/scrape", method="post")
 
-        input(type="text", name="urlToScrape")
+                p Var god ange URL till sidan att skrapa.
 
-        input(type="submit", value="Skrapa url")
+                input(type="text", name="urlToScrape")
+
+                input(type="submit", value="Skrapa url")
 
