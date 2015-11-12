@@ -10,13 +10,14 @@ var ScrapeService = require('../model/scrapeservice.js');
 router.post('/', function(req, res, next){
 
     var baseUrl,
-        scraper;
+        scraper,
+        robotsParser;
 
     // GET url from post
     baseUrl = req.body.urlToScrape;
 
     // Create scrape service
-    scraper = new ScrapeService(baseUrl);
+    scraper = new ScrapeService(baseUrl, res);
 
     // Start scraping
     scraper.runScraper(function(eventsArray){
@@ -25,6 +26,5 @@ router.post('/', function(req, res, next){
         res.render('events', {events: eventsArray });
     });
 });
-
 
 module.exports = router;

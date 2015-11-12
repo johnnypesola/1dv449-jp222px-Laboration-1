@@ -1,10 +1,8 @@
 
 // Module dependencies
-var express = require('express');
 var request = require('request');
 var cheerio = require('cheerio');
-var querystring =  require('querystring');
-var router = express.Router();
+var robots = require('robots');
 
 // Model dependencies
 var Person = require('../model/person.js');
@@ -14,9 +12,11 @@ var TimeSpan = require('../model/timespan.js');
 var Dinner = require('../model/dinner.js');
 var DayEvent = require('../model/dayevent.js');
 
-var ScrapeService = function(baseUrl){
+var ScrapeService = function(baseUrl, res){
 
     // Init Variables
+    var scraperAgentName = "scraperbot";
+
     var calendarString = "Kalendrar";
     var cinemaString = "Stadens biograf!";
     var dinnerString = "Zekes restaurang!";
@@ -30,6 +30,10 @@ var ScrapeService = function(baseUrl){
     var dinnerObj;
 
     var dinnerBookingTargetUrl;
+
+    // Create robots.txt parser
+    var robotsParser = new robots.RobotsParser();
+    var robotsTxtFile = fixUrl(baseUrl + "/robots.txt");
 
     // Public methods
     this.runScraper = function(callback){
@@ -56,6 +60,60 @@ var ScrapeService = function(baseUrl){
     };
 
     // Private methods
+
+    function checkForGetError(error, response){
+
+        // Check if there was an error.
+        if (error || response.statusCode != 200) {
+
+            res.render('scrape_error', { message: "ERROR: Got code '" + response.statusCode + "' fetching '" + url + "'"});
+
+            return true;
+        }
+
+        return false;
+    }
+
+    function fetchPage(url, callback){
+
+        // Prepare som options for request.js
+        var requestOptions = {
+            url: url,
+            headers: {
+                'User-Agent': scraperAgentName
+            }
+        };
+
+        // Get robots.txt
+        robotsParser.setUrl(robotsTxtFile, function(robotsParser, success) {
+            if (success) {
+
+                // If its ok to fetch the target link according to robots.txt
+                robotsParser.canFetch('*', '/' + stripBaseUrl(url), function (access) {
+                    if (access) {
+
+                        // Get the page specified in options
+                        request(requestOptions, function(error, response, html) {
+
+                            // In case there were no errors
+                            if (!checkForGetError(error, response)) {
+
+                                // Execute callback
+                                callback(html);
+                            }
+                        });
+                    }
+                    else {
+                        res.render('scrape_error', { message: "ERROR: robots.txt on host server prevents access to '" + url + "'"});
+                    }
+                });
+            }
+            else {
+                res.render('scrape_error', { message: "ERROR: Occurred fetching robots.txt'"});
+            }
+        });
+    }
+
     function scrapeArrayOfStartPageLinks(linksArray, callback){
 
         var functionToRun;
@@ -173,14 +231,13 @@ var ScrapeService = function(baseUrl){
 
     function scrapeDinner(url, callback){
 
+        var $, availableDaysRawDataArray = [];
+
         callback = callback || function(){};
         url = (fixUrl(baseUrl + "/" + url));
 
         // Fetch the url
-        request(url, function(error, response, html) {
-
-            var $;
-            var availableDaysRawDataArray = [];
+        fetchPage(url, function(html){
 
             // Get jquery functionality with cheerio
             $ = cheerio.load(html);
@@ -199,7 +256,7 @@ var ScrapeService = function(baseUrl){
 
             // Execute callback
             callback();
-        })
+        });
     }
 
     function parseDinnerDaysRawData(rawDataArray){
@@ -230,6 +287,7 @@ var ScrapeService = function(baseUrl){
     function scrapeCalendar(url, callback){
 
         var currentLink;
+
         callback = callback || function(){};
         url = fixUrl(baseUrl + url);
 
@@ -263,90 +321,82 @@ var ScrapeService = function(baseUrl){
 
     function scrapePerson(url, callback){
 
+        var $, name, person, fridayElemIndex, saturdayElemIndex, sundayElemIndex, tdElements;
+
         url = (fixUrl(url));
         callback = callback || function(){};
 
         // Fetch the url
-        request(url, function(error, response, html){
+        fetchPage(url, function(html){
 
-            // Check that there were no errors
-            if(!error){
+            // Get jquery functionality with cheerio
+            $ = cheerio.load(html);
 
-                var $, name, person, fridayElemIndex, saturdayElemIndex, sundayElemIndex, tdElements;
+            // Get name
+            name = $('h2').text();
 
-                // Get jquery functionality with cheerio
-                $ = cheerio.load(html);
+            // Create person
+            person = new Person(name);
 
-                // Get name
-                name = $('h2').text();
+            // Get free days indexes
+            fridayElemIndex =  $("th:contains('Friday')").index();
+            saturdayElemIndex =  $("th:contains('Saturday')").index();
+            sundayElemIndex =  $("th:contains('Sunday')").index();
 
-                // Create person
-                person = new Person(name);
+            // Get table cells with th indexes
+            tdElements = $("td");
 
-                // Get free days indexes
-                fridayElemIndex =  $("th:contains('Friday')").index();
-                saturdayElemIndex =  $("th:contains('Saturday')").index();
-                sundayElemIndex =  $("th:contains('Sunday')").index();
+            person.freeOnFriday = (tdElements.eq(fridayElemIndex).text().toLowerCase() == "ok");
+            person.freeOnSaturday = (tdElements.eq(saturdayElemIndex).text().toLowerCase() == "ok");
+            person.freeOnSunday = (tdElements.eq(sundayElemIndex).text().toLowerCase() == "ok");
 
-                // Get table cells with th indexes
-                tdElements = $("td");
+            // Store person
+            personObjArray.push(person);
 
-                person.freeOnFriday = (tdElements.eq(fridayElemIndex).text().toLowerCase() == "ok");
-                person.freeOnSaturday = (tdElements.eq(saturdayElemIndex).text().toLowerCase() == "ok");
-                person.freeOnSunday = (tdElements.eq(sundayElemIndex).text().toLowerCase() == "ok");
-
-                // Store person
-                personObjArray.push(person);
-
-                // Execute callback
-                callback();
-            }
+            // Execute callback
+            callback();
         })
     }
 
     function scrapeCinema(url, callback){
 
+        var $;
+
         url = (fixUrl(baseUrl + url));
         callback = callback || function(){};
 
         // Fetch the url
-        request(url, function(error, response, html){
+        fetchPage(url, function(html){
 
-            // Check that there were no errors
-            if(!error){
+            // Get jquery functionality with cheerio
+            $ = cheerio.load(html);
 
-                var $;
+            // Get movie (ajax) values
+            $("select[name='movie'] option:not(:disabled)").each(function(index){
 
-                // Get jquery functionality with cheerio
-                $ = cheerio.load(html);
+                var movieName = $(this).text();
+                var movieValue = $(this).val();
 
-                // Get movie (ajax) values
-                $("select[name='movie'] option:not(:disabled)").each(function(index){
+                movieObjArray.push(
+                    new Movie(movieName, movieValue)
+                )
+            });
 
-                    var movieName = $(this).text();
-                    var movieValue = $(this).val();
+            // Get day and create new Day to movie.daysArray
+            $("select[name='day'] option:not(:disabled)").each(function(index){
 
-                    movieObjArray.push(
-                        new Movie(movieName, movieValue)
-                    )
+                var dayName = $(this).text();
+                var dayValue = $(this).val();
+
+                movieObjArray.forEach(function(movie, index, array){
+
+                    movie.daysArray.push(new Day(dayName, dayValue));
                 });
+            });
 
-                // Get day and create new Day to movie.daysArray
-                $("select[name='day'] option:not(:disabled)").each(function(index){
-
-                    var dayName = $(this).text();
-                    var dayValue = $(this).val();
-
-                    movieObjArray.forEach(function(movie, index, array){
-
-                        movie.daysArray.push(new Day(dayName, dayValue));
-                    });
-                });
-
-                // Get movies for days status (if movies are free or fully booked for specific days).
-                getMovieDaysStatus(fixUrl(url + "/check"), callback);
-            }
-        })
+            // Get movies for days status (if movies are free or fully booked for specific days).
+            getMovieDaysStatus(fixUrl(url + "/check"), callback);
+        });
     }
 
     function getMovieDaysStatus(url, callBack){
@@ -370,25 +420,29 @@ var ScrapeService = function(baseUrl){
                 // Get day status
                 request.get({url:url, qs:queryString, json: true}, function (error, response, jsonData) {
 
-                    // Add new TimeSpan object to day object.
-                    jsonData.forEach(function(dataObj){
+                    // In case there were no errors
+                    if(!checkForGetError(error, response)){
 
-                        day.timeSpansArray.push(
-                            new TimeSpan(dataObj.time, null, dataObj.status)
-                        );
-                    });
+                        // Add new TimeSpan object to day object.
+                        jsonData.forEach(function(dataObj){
 
-                    requestCount++;
+                            day.timeSpansArray.push(
+                                new TimeSpan(dataObj.time, null, dataObj.status)
+                            );
+                        });
 
-                    // Set max requests if needed
-                    if(!maxRequests){
-                        maxRequests = jsonData.length * movie.daysArray.length;
-                    }
+                        requestCount++;
 
-                    // Execute callback if its the last request
-                    if(requestCount === maxRequests){
+                        // Set max requests if needed
+                        if(!maxRequests){
+                            maxRequests = jsonData.length * movie.daysArray.length;
+                        }
 
-                        callBack();
+                        // Execute callback if its the last request
+                        if(requestCount === maxRequests){
+
+                            callBack();
+                        }
                     }
                 })
             });
@@ -404,42 +458,41 @@ var ScrapeService = function(baseUrl){
         return urlString.replace(/([^:]\/)\/+/g, "$1");
     }
 
+    function stripBaseUrl(urlString){
+
+        return urlString.replace(baseUrl, "");
+    }
+
     function scrapeLinks(url, callback){
+
+        var $, linksArray;
 
         callback = callback || function(){};
 
         // Fetch the url
-        request(url, function(error, response, html){
+        fetchPage(url, function(html){
 
-            var $, linksArray;
+            // Get jquery functionality with cheerio
+            $ = cheerio.load(html);
 
-            // Check that there were no errors
-            if(!error){
+            // Define an array that should contain parsed links
+            linksArray = [];
 
-                // Get jquery functionality with cheerio
-                $ = cheerio.load(html);
+            // Loop trough links in page
+            $('a').each(function(index) {
 
-                // Define an array that should contain parsed links
-                linksArray = [];
+                // Create object of link and store in array
+                linksArray.push(
+                    {
+                        title : $(this).text(),
+                        href : $(this).attr('href')
+                    }
+                )
+            });
 
-                // Loop trough links in page
-                $('a').each(function(index) {
-
-                    // Create object of link and store in array
-                    linksArray.push(
-                        {
-                            title : $(this).text(),
-                            href : $(this).attr('href')
-                        }
-                    )
-                });
-
-                callback(linksArray);
-            }
-        })
+            callback(linksArray);
+        });
     }
-
-
 };
 
 module.exports = ScrapeService;
