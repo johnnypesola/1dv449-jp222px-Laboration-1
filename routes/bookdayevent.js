@@ -6,7 +6,7 @@ var cheerio = require('cheerio');
 var querystring =  require('querystring');
 var router = express.Router();
 
-var ScrapeService = require('../model/scrapeservice.js');
+var ScrapeService = require('../model/scrape_events_service.js');
 var Day = require('../model/day.js');
 
 

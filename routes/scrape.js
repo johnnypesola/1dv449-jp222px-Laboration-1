@@ -3,7 +3,7 @@
 var express = require('express');
 var router = express.Router();
 
-var ScrapeService = require('../model/scrapeservice.js');
+var ScrapeEventsService = require('../model/scrape_events_service.js');
 
 
 // Handle url to scrape. Sent with POST form
@@ -17,7 +17,7 @@ router.post('/', function(req, res, next){
     baseUrl = req.body.urlToScrape;
 
     // Create scrape service
-    scraper = new ScrapeService(baseUrl, res);
+    scraper = new ScrapeEventsService(baseUrl, res);
 
     // Start scraping
     scraper.runScraper(function(eventsArray){
